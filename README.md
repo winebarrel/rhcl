@@ -2,6 +2,9 @@
 
 Pure Ruby [HCL](https://github.com/hashicorp/hcl) parser
 
+[![Gem Version](https://badge.fury.io/rb/rhcl.png)](http://badge.fury.io/rb/rhcl)
+[![Build Status](https://travis-ci.org/winebarrel/rhcl.svg?branch=master)](https://travis-ci.org/winebarrel/rhcl)
+
 ## Installation
 
 Add this line to your application's Gemfile:
