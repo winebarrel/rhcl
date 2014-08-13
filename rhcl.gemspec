@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['sgwr_dts@yahoo.co.jp']
   spec.summary       = %q{Pure Ruby HCL parser}
   spec.description   = %q{Pure Ruby HCL parser}
-  spec.homepage      = ''
+  spec.homepage      = 'https://github.com/winebarrel/rhcl'
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files -z`.split("\x0")
