@@ -12,7 +12,7 @@ require 'strscan'
 module Rhcl
   class Parse < Racc::Parser
 
-module_eval(<<'...end parse.y/module_eval...', 'parse.y', 98)
+module_eval(<<'...end parse.y/module_eval...', 'parse.y', 107)
 
 def initialize(obj)
   src = obj.is_a?(IO) ? obj.read : obj.to_s
@@ -21,7 +21,6 @@ end
 
 def scan
   tok = nil
-  in_comment = false
 
   until @ss.eos?
     if (tok = @ss.scan /\s+/)
@@ -32,17 +31,26 @@ def scan
       case @ss.getch
       when '/'
         @ss.scan_until(/(\n|\z)/)
-      when '/'
-        @ss.scan_until(%r{(\*/|\z)})
+      when '*'
+        nested = 1
+
+        until nested.zero?
+          case @ss.scan_until(%r{(/\*|\*/|\z)})
+          when %r|/\*\z|
+            nested += 1
+          when %r|\*/\z|
+            nested -= 1
+          else
+            break
+          end
+        end
       else
         raise "comment expected, got '#{tok}'"
       end
-    elsif (tok = @ss.scan(/\d+\.\d+/))
+    elsif (tok = @ss.scan(/-?\d+\.\d+/))
       yield [:FLOAT, tok.to_f]
-    elsif (tok = @ss.scan(/\d+/))
+    elsif (tok = @ss.scan(/-?\d+/))
       yield [:INTEGER, tok.to_i]
-    elsif (tok = @ss.scan(/-/))
-      yield [:MINUS, tok]
     elsif (tok = @ss.scan(/,/))
       yield [:COMMA, tok]
     elsif (tok = @ss.scan(/\=/))
@@ -62,7 +70,7 @@ def scan
       token_type = :IDENTIFIER
 
       if ['true', 'false'].include?(identifier)
-        identifier = (identifier =~ /true/)
+        identifier = !!(identifier =~ /true/)
         token_type = :BOOL
       end
 
@@ -85,69 +93,73 @@ end
 ##### State transition tables begin ###
 
 racc_action_table = [
-    10,    29,     9,    30,    16,    17,    20,    14,     7,    31,
-    21,    22,     3,   nil,    10,     6,    13,    28,     3,     6,
-   nil,     6,    24,     3,     3,   nil,     6,     6,    26,    27 ]
+    10,    31,    32,     9,    16,    17,    20,     7,    14,    21,
+    22,     3,   nil,    29,     6,    26,   nil,    21,    22,    10,
+     3,    13,    29,     6,     6,   nil,    21,    22,    30,     3,
+    24,     3,     6,   nil,     6 ]
 
 racc_action_check = [
-     9,    25,     3,    25,     9,     9,     9,     7,     1,    30,
-     9,     9,     1,   nil,     5,     1,     5,    23,    23,     5,
-   nil,    23,    10,    10,     0,   nil,    10,     0,    20,    20 ]
+     9,    25,    25,     3,     9,     9,     9,     1,     7,     9,
+     9,     1,   nil,    20,     1,    20,   nil,    20,    20,     5,
+     0,     5,    32,     0,     5,   nil,    32,    32,    23,    23,
+    10,    10,    23,   nil,    10 ]
 
 racc_action_pointer = [
-    20,     8,   nil,    -3,   nil,    12,   nil,     7,   nil,    -2,
-    19,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
-    19,   nil,   nil,    14,   nil,    -8,   nil,   nil,   nil,   nil,
-    -1,   nil ]
+    16,     7,   nil,    -2,   nil,    17,   nil,     8,   nil,    -2,
+    27,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
+     6,   nil,   nil,    25,   nil,    -8,   nil,   nil,   nil,   nil,
+   nil,   nil,    15,   nil ]
 
 racc_action_default = [
-   -21,   -21,    -1,   -13,   -10,   -21,   -14,   -21,    -2,   -21,
-   -21,   -11,   -12,   -13,    32,    -5,    -6,    -7,    -8,    -9,
-   -21,   -19,   -20,   -21,    -4,   -21,   -16,   -17,    -3,   -15,
-   -21,   -18 ]
+   -23,   -23,    -1,   -13,   -10,   -23,   -14,   -23,    -2,   -23,
+   -23,   -11,   -12,   -13,    34,    -5,    -6,    -7,    -8,    -9,
+   -23,   -21,   -22,   -23,    -4,   -23,   -16,   -17,   -19,   -20,
+    -3,   -15,   -23,   -18 ]
 
 racc_goto_table = [
-     8,     1,    11,    15,    19,    12,    18,    25,   nil,   nil,
-   nil,    23,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
+     8,    27,     1,    11,    12,    15,    25,    18,    19,   nil,
+   nil,   nil,    23,    33,   nil,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,     8 ]
 
 racc_goto_check = [
-     2,     1,     3,     4,     5,     6,     3,     8,   nil,   nil,
-   nil,     1,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
+     2,     9,     1,     3,     6,     4,     8,     3,     5,   nil,
+   nil,   nil,     1,     9,   nil,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,     2 ]
 
 racc_goto_pointer = [
-   nil,     1,    -1,    -3,    -6,    -5,     0,   nil,   -13 ]
+   nil,     2,    -1,    -2,    -4,    -1,    -1,   nil,   -14,   -19 ]
 
 racc_goto_default = [
-   nil,   nil,     2,   nil,   nil,   nil,     4,     5,   nil ]
+   nil,   nil,     2,   nil,    28,   nil,     4,     5,   nil,   nil ]
 
 racc_reduce_table = [
   0, 0, :racc_error,
-  1, 15, :_reduce_1,
-  2, 15, :_reduce_2,
-  3, 17, :_reduce_3,
-  2, 17, :_reduce_4,
-  3, 16, :_reduce_5,
-  3, 16, :_reduce_6,
-  3, 16, :_reduce_7,
-  3, 16, :_reduce_8,
-  3, 16, :_reduce_9,
-  1, 16, :_reduce_10,
-  2, 20, :_reduce_11,
-  2, 20, :_reduce_12,
-  1, 21, :_reduce_13,
-  1, 21, :_reduce_14,
-  3, 19, :_reduce_15,
-  2, 19, :_reduce_16,
-  1, 22, :_reduce_17,
-  3, 22, :_reduce_18,
-  1, 18, :_reduce_19,
-  1, 18, :_reduce_20 ]
+  1, 14, :_reduce_1,
+  2, 14, :_reduce_2,
+  3, 16, :_reduce_3,
+  2, 16, :_reduce_4,
+  3, 15, :_reduce_5,
+  3, 15, :_reduce_6,
+  3, 15, :_reduce_7,
+  3, 15, :_reduce_8,
+  3, 15, :_reduce_9,
+  1, 15, :_reduce_10,
+  2, 19, :_reduce_11,
+  2, 19, :_reduce_12,
+  1, 20, :_reduce_13,
+  1, 20, :_reduce_14,
+  3, 18, :_reduce_15,
+  2, 18, :_reduce_16,
+  1, 21, :_reduce_17,
+  3, 21, :_reduce_18,
+  1, 22, :_reduce_19,
+  1, 22, :_reduce_20,
+  1, 17, :_reduce_21,
+  1, 17, :_reduce_22 ]
 
-racc_reduce_n = 21
+racc_reduce_n = 23
 
-racc_shift_n = 32
+racc_shift_n = 34
 
 racc_token_table = {
   false => 0,
@@ -160,12 +172,11 @@ racc_token_table = {
   :STRING => 7,
   :LEFTBRACKET => 8,
   :RIGHTBRACKET => 9,
-  :listitem => 10,
-  :COMMA => 11,
-  :INTEGER => 12,
-  :FLOAT => 13 }
+  :COMMA => 10,
+  :INTEGER => 11,
+  :FLOAT => 12 }
 
-racc_nt_base = 14
+racc_nt_base = 13
 
 racc_use_result_var = false
 
@@ -196,7 +207,6 @@ Racc_token_to_s_table = [
   "STRING",
   "LEFTBRACKET",
   "RIGHTBRACKET",
-  "listitem",
   "COMMA",
   "INTEGER",
   "FLOAT",
@@ -208,7 +218,8 @@ Racc_token_to_s_table = [
   "list",
   "block",
   "blockId",
-  "listitems" ]
+  "listitems",
+  "listitem" ]
 
 Racc_debug_parser = false
 
@@ -218,14 +229,14 @@ Racc_debug_parser = false
 
 module_eval(<<'.,.,', 'parse.y', 5)
   def _reduce_1(val, _values)
-                    val[0]
+                     val[0]
                
   end
 .,.,
 
 module_eval(<<'.,.,', 'parse.y', 9)
   def _reduce_2(val, _values)
-                     val[0].merge(val[1])
+                     val[0].deep_merge(val[1])
                
   end
 .,.,
@@ -344,13 +355,27 @@ module_eval(<<'.,.,', 'parse.y', 80)
 
 module_eval(<<'.,.,', 'parse.y', 85)
   def _reduce_19(val, _values)
-                val[0]
-          
+                  val[0]
+            
   end
 .,.,
 
 module_eval(<<'.,.,', 'parse.y', 89)
   def _reduce_20(val, _values)
+                  val[0]
+            
+  end
+.,.,
+
+module_eval(<<'.,.,', 'parse.y', 94)
+  def _reduce_21(val, _values)
+                val[0]
+          
+  end
+.,.,
+
+module_eval(<<'.,.,', 'parse.y', 98)
+  def _reduce_22(val, _values)
                 val[0]
           
   end

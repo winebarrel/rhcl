@@ -1,1 +1,2 @@
 require 'rhcl'
+require 'json'

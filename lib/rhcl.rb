@@ -5,5 +5,6 @@ module Rhcl
   module_function :parse
 end
 
+require 'deep_merge'
 require 'rhcl/version'
 require 'rhcl/parse.tab'

@@ -3,11 +3,11 @@ options no_result_var
 rule
   objectlist : objectitem
                {
-                val[0]
+                 val[0]
                }
              | objectlist objectitem
                {
-                 val[0].merge(val[1])
+                 val[0].deep_merge(val[1])
                }
 
   object: LEFTBRACE objectlist RIGHTBRACE
@@ -81,6 +81,15 @@ rule
                val[0] + [val[2]]
              }
 
+  listitem: number
+            {
+              val[0]
+            }
+          | STRING
+            {
+              val[0]
+            }
+
   number: INTEGER
           {
             val[0]
@@ -103,7 +112,6 @@ end
 
 def scan
   tok = nil
-  in_comment = false
 
   until @ss.eos?
     if (tok = @ss.scan /\s+/)
@@ -114,17 +122,26 @@ def scan
       case @ss.getch
       when '/'
         @ss.scan_until(/(\n|\z)/)
-      when '/'
-        @ss.scan_until(%r{(\*/|\z)})
+      when '*'
+        nested = 1
+
+        until nested.zero?
+          case @ss.scan_until(%r{(/\*|\*/|\z)})
+          when %r|/\*\z|
+            nested += 1
+          when %r|\*/\z|
+            nested -= 1
+          else
+            break
+          end
+        end
       else
         raise "comment expected, got '#{tok}'"
       end
-    elsif (tok = @ss.scan(/\d+\.\d+/))
+    elsif (tok = @ss.scan(/-?\d+\.\d+/))
       yield [:FLOAT, tok.to_f]
-    elsif (tok = @ss.scan(/\d+/))
+    elsif (tok = @ss.scan(/-?\d+/))
       yield [:INTEGER, tok.to_i]
-    elsif (tok = @ss.scan(/-/))
-      yield [:MINUS, tok]
     elsif (tok = @ss.scan(/,/))
       yield [:COMMA, tok]
     elsif (tok = @ss.scan(/\=/))
@@ -144,7 +161,7 @@ def scan
       token_type = :IDENTIFIER
 
       if ['true', 'false'].include?(identifier)
-        identifier = (identifier =~ /true/)
+        identifier = !!(identifier =~ /true/)
         token_type = :BOOL
       end
 
