@@ -1,6 +1,6 @@
 # Rhcl
 
-TODO: Write a gem description
+Pure Ruby [HCL](https://github.com/hashicorp/hcl) parser
 
 ## Installation
 
@@ -18,11 +18,36 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+### Parse
+
+```ruby
+Rhcl.parse(<<-EOS)
+  variable "foo" {
+      default = "bar"
+      description = "bar"
+  }
+
+  variable "amis" {
+      default = {
+          east = "foo"
+      }
+  }
+EOS
+```
+
+### Dump
+
+```ruby
+Rhcl.dump(
+  {"variable"=>
+  {"foo"=>{"default"=>"bar", "description"=>"bar"},
+   "amis"=>{"default"=>{"east"=>"foo"}}}}
+)
+```
 
 ## Contributing
 
-1. Fork it ( http://github.com/<my-github-username>/rhcl/fork )
+1. Fork it ( http://github.com/winebarrel/rhcl/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
