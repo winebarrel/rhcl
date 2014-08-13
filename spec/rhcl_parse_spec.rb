@@ -257,7 +257,7 @@ describe Rhcl do
     )
   end
 
-  it 'comment' do
+  it 'complex' do
     parsed = Rhcl.parse(<<-EOS)
 // This comes from Terraform, as a test
 variable "foo" {
