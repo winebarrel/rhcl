@@ -21,80 +21,73 @@ end
 
 def scan
   tok = nil
-  @prev_tokens = []
+  @backup = []
 
   until @ss.eos?
-    if (tok = @ss.scan /\s+/)
+    if (tok = backup { @ss.scan /\s+/ })
       # nothing to do
-    elsif (tok = @ss.scan(/#/))
-      @prev_tokens << tok
-      @prev_tokens << @ss.scan_until(/\n/)
-      tok = ''
-    elsif (tok = @ss.scan(%r|/|))
-      @prev_tokens << tok
-
-      case (tok = @ss.getch)
+    elsif (tok = backup { @ss.scan /#/ })
+      backup { @ss.scan_until /\n/ }
+    elsif (tok = backup { @ss.scan %r|/| })
+      case (tok = backup { @ss.getch })
       when '/'
-        @prev_tokens << tok
-        @prev_tokens << @ss.scan_until(/(\n|\z)/)
+        backup { @ss.scan_until /(\n|\z)/ }
       when '*'
-        @prev_tokens << tok
         nested = 1
 
         until nested.zero?
-          case (tok = @ss.scan_until(%r{(/\*|\*/|\z)}))
+          case (tok = backup { @ss.scan_until %r{(/\*|\*/|\z)} })
           when %r|/\*\z|
-            @prev_tokens << tok
             nested += 1
           when %r|\*/\z|
-            @prev_tokens << tok
             nested -= 1
           else
-            @prev_tokens << tok
             break
           end
         end
       else
-        raise "comment expected, got '#{tok}'"
+        raise "comment expected, got #{tok.inspect}"
       end
-
-      tok = ''
-    elsif (tok = @ss.scan(/-?\d+\.\d+/))
+    elsif (tok = backup { @ss.scan /-?\d+\.\d+/ })
       yield [:FLOAT, tok.to_f]
-    elsif (tok = @ss.scan(/-?\d+/))
+    elsif (tok = backup { @ss.scan /-?\d+/ })
       yield [:INTEGER, tok.to_i]
-    elsif (tok = @ss.scan(/,/))
+    elsif (tok = backup { @ss.scan /,/ })
       yield [:COMMA, tok]
-    elsif (tok = @ss.scan(/\=/))
+    elsif (tok = backup { @ss.scan /\=/ })
       yield [:EQUAL, tok]
-    elsif (tok = @ss.scan(/\[/))
+    elsif (tok = backup { @ss.scan /\[/ })
       yield [:LEFTBRACKET, tok]
-    elsif (tok = @ss.scan(/\]/))
+    elsif (tok = backup { @ss.scan /\]/ })
       yield [:RIGHTBRACKET, tok]
-    elsif (tok = @ss.scan(/\{/))
+    elsif (tok = backup { @ss.scan /\{/ })
       yield [:LEFTBRACE, tok]
-    elsif (tok = @ss.scan(/\}/))
+    elsif (tok = backup { @ss.scan /\}/ })
       yield [:RIGHTBRACE, tok]
-    elsif (tok = @ss.scan(/"/))
-      yield [:STRING, (@ss.scan_until(/("|\z)/) || '').sub(/"\z/, '')]
+    elsif (tok = backup { @ss.scan /"/ })
+      yield [:STRING, (backup { @ss.scan_until /("|\z)/ } || '').sub(/"\z/, '')]
     else
-      tok = (@ss.scan_until(/(\s|\z)/) || '').sub(/\s\z/, '')
+      identifier = (backup { @ss.scan_until /(\s|\z)/ } || '').sub(/\s\z/, '')
       token_type = :IDENTIFIER
 
-      if ['true', 'false'].include?(tok)
-        tok = !!(tok =~ /true/)
+      if ['true', 'false'].include?(identifier)
+        identifier = !!(identifier =~ /true/)
         token_type = :BOOL
       end
 
-      yield [token_type, tok]
+      yield [token_type, identifier]
     end
-
-    @prev_tokens << tok
   end
 
   yield [false, '$end']
 end
 private :scan
+
+def backup
+  tok = yield
+  @backup << tok if tok
+  return tok
+end
 
 def parse
   yyparse self, :scan
@@ -106,9 +99,17 @@ end
 
 def raise_error(error_value)
   header = "parse error on value: #{error_value}\n"
-  prev = (@prev_tokens || [])
+  error_value = @backup.pop
+
+  if error_value =~ /\n\z/
+    error_value = '__' + error_value.chomp + "__\n"
+  else
+    error_value = '__' + error_value + '__'
+  end
+
+  prev = (@backup || [])
   prev = prev.empty? ? '' : prev.join + ' '
-  errmsg = prev + "__#{error_value}__"
+  errmsg = prev + error_value
 
   if @ss and @ss.rest?
     errmsg << ' ' + @ss.rest
