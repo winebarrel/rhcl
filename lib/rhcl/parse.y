@@ -105,6 +105,10 @@ require 'strscan'
 
 ---- inner
 
+TRUE_VALUES  = %w(true  on  yes)
+FALSE_VALUES = %w(false off no )
+BOOLEAN_VALUES = TRUE_VALUES + FALSE_VALUES
+
 def initialize(obj)
   src = obj.is_a?(IO) ? obj.read : obj.to_s
   @ss = StringScanner.new(src)
@@ -161,8 +165,8 @@ def scan
       identifier = (backup { @ss.scan_until /(\s|\z)/ } || '').sub(/\s\z/, '')
       token_type = :IDENTIFIER
 
-      if ['true', 'false'].include?(identifier)
-        identifier = !!(identifier =~ /true/)
+      if BOOLEAN_VALUES.include?(identifier)
+        identifier = TRUE_VALUES.include?(identifier)
         token_type = :BOOL
       end
 

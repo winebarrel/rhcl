@@ -323,4 +323,24 @@ output "web_ip" {
  "output"=>{"web_ip"=>{"value"=>"${aws_instance.web.private_ip}"}}}
     )
   end
+
+  it 'bool types' do
+    parsed = Rhcl.parse(<<-EOS)
+      foo  = true
+      bar  = false
+      zoo  = on
+      foo2 = off
+      bar2 = yes
+      zoo2 = no
+    EOS
+
+    expect(parsed).to eq(
+      {"foo"=>true,
+       "bar"=>false,
+       "zoo"=>true,
+       "foo2"=>false,
+       "bar2"=>true,
+       "zoo2"=>false}
+    )
+  end
 end
